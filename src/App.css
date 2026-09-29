@@ -1,0 +1,189 @@
+* { margin: 0; padding: 0; box-sizing: border-box; }
+html, body, #root { height: 100%; overflow: hidden; }
+
+.launcher {
+  position: relative;
+  width: 100vw;
+  height: 100vh;
+}
+
+/* ===== Horizontal pager ===== */
+.pager-x {
+  display: flex;
+  width: 100vw;
+  height: 100vh;
+  overflow-x: auto;
+  overflow-y: hidden;
+  scroll-snap-type: x mandatory;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none;
+  overscroll-behavior-x: contain;
+  overscroll-behavior-y: none;
+  touch-action: pan-x;
+}
+.pager-x::-webkit-scrollbar { display: none; }
+
+/* ===== Page ===== */
+.page {
+  flex: 0 0 100vw;
+  width: 100vw;
+  height: 100vh;
+  scroll-snap-align: start;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+  position: relative;
+  transition: background 0.4s ease;
+}
+
+.page-label {
+  position: absolute;
+  top: 24px;
+  left: 24px;
+  color: rgba(255, 255, 255, 0.75);
+  font-family: system-ui, sans-serif;
+  font-size: 14px;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.page-counter {
+  font-size: 11px;
+  padding: 2px 8px;
+  background: rgba(255, 255, 255, 0.15);
+  border-radius: 999px;
+}
+
+.app-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 24px;
+  width: 100%;
+  max-width: 640px;
+  animation: fadeIn 0.25s ease;
+}
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(8px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+.app-icon {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: white;
+  font-family: system-ui, sans-serif;
+  font-size: 12px;
+  padding: 8px;
+  border-radius: 12px;
+  transition: background 0.2s, transform 0.15s;
+}
+.app-icon:hover { background: rgba(255, 255, 255, 0.08); }
+.app-icon:active { transform: scale(0.95); }
+.app-icon img { width: 56px; height: 56px; border-radius: 14px; }
+
+/* ===== Right side tab (full height) ===== */
+.side-tab {
+  position: fixed;
+  top: 0;
+  right: 0;
+  width: 64px;
+  height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 100;
+  pointer-events: none;
+  will-change: transform;
+  transform: translate3d(0, 0, 0);   /* ← prime the GPU layer */
+  backface-visibility: hidden;        /* ← avoids subpixel jitter */
+  contain: layout style paint;        /* ← isolate from the pager */
+}
+
+/* A subtle vertical rail that spans the full height */
+.side-tab-rail {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  right: 0px;
+  width: 60px;
+  background: #6a6dcc; 
+  pointer-events: none;
+}
+
+/* Buttons group — vertically centered, its own pill */
+.side-tab-inner {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 14px;
+  padding: 18px 12px;
+  background: rgba(0, 0, 0, 0.35);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border-radius: 999px;
+  pointer-events: auto;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.25);
+}
+
+.side-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.4);
+  border: none;
+  cursor: pointer;
+  padding: 0;
+  transition: all 0.25s ease;
+}
+.side-dot:hover { background: rgba(255, 255, 255, 0.75); }
+.side-dot.active {
+  background: #ffffff;
+  width: 12px;
+  height: 12px;
+  box-shadow: 0 0 10px rgba(255, 255, 255, 0.9);
+}
+
+/* ===== Bottom indicator ===== */
+.indicator {
+  position: fixed;
+  bottom: 24px;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 16px;
+  background: rgba(0, 0, 0, 0.35);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border-radius: 999px;
+  z-index: 100;
+}
+
+.dot {
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.4);
+  border: none;
+  cursor: pointer;
+  padding: 0;
+  transition: all 0.25s ease;
+}
+.dot:hover { background: rgba(255, 255, 255, 0.75); }
+.dot.active {
+  background: #ffffff;
+  width: 24px;
+  border-radius: 5px;
+}
