@@ -87,26 +87,32 @@ function App() {
   })
 
   // ---- Transform (2D: track + side tab) ----
-  const applyTransform = (dx = 0, dy = 0, animate = false) => {
-    const transition = animate
+  const setTrackTransform = (tx, ty, animate) => {
+    if (!trackRef.current) return
+    trackRef.current.style.transition = animate
       ? `transform ${ANIM_MS}ms cubic-bezier(0.22, 1, 0.36, 1)`
       : 'none'
+    trackRef.current.style.transform = `translate3d(${tx}px, ${ty}px, 0)`
 
-    if (trackRef.current) {
-      trackRef.current.style.transition = transition
-      trackRef.current.style.transform =
-        `translate3d(${-currentCol * W() + dx}px, ${-currentRow * H() + dy}px, 0)`
-    }
     if (sideTabRef.current) {
-      // Side tab mirrors page 1's horizontal displacement only,
-      // clamped so it stays parked off-screen past column 0.
-      const displaced = Math.min(
-        Math.max(-currentCol * W() + dx, -W()),
-        0
-      )
-      sideTabRef.current.style.transition = transition
+      sideTabRef.current.style.transition = animate
+        ? `transform ${ANIM_MS}ms cubic-bezier(0.22, 1, 0.36, 1)`
+        : 'none'
+      const displaced = Math.min(Math.max(tx, -W()), 0)
       sideTabRef.current.style.transform = `translate3d(${displaced}px, 0, 0)`
     }
+  }
+
+  // Convenience: target position for a given column/row
+  const targetFor = (col, row) => ({
+    x: -col * W(),
+    y: -row * H(),
+  })
+
+  // Animate from current visual position to a column/row target
+  const animateTo = (col, row) => {
+    const { x, y } = targetFor(col, row)
+    setTrackTransform(x, y, true)
   }
 
   // ---- Pointer gesture handlers ----
@@ -128,7 +134,6 @@ function App() {
     let dx = e.clientX - startXRef.current
     let dy = e.clientY - startYRef.current
 
-    // Decide axis once per gesture
     if (!axisRef.current) {
       const ax = Math.abs(dx)
       const ay = Math.abs(dy)
@@ -138,26 +143,29 @@ function App() {
     }
 
     if (axisRef.current === 'x') {
-      // Horizontal — clamp at first/last column
       const atStart = currentCol === 0 && dx > 0
       const atEnd = currentCol === GRID.length - 1 && dx < 0
       if (atStart || atEnd) dx *= 0.3
       dy = 0
     } else if (axisRef.current === 'y') {
-      // Vertical — clamp at first/last sub-page of the *current* column
       const subCount = GRID[currentCol].pages.length
       const atTop = currentRow === 0 && dy > 0
       const atBottom = currentRow === subCount - 1 && dy < 0
       if (atTop || atBottom) dy *= 0.3
       dx = 0
     } else {
-      // Undecided — don't move yet
       return
     }
 
     dragXRef.current = dx
     dragYRef.current = dy
-    applyTransform(dx, dy, false)
+
+    // Write the live position directly (no transition)
+    setTrackTransform(
+      -currentCol * W() + dx,
+      -currentRow * H() + dy,
+      false
+    )
   }
 
   const onPointerUp = () => {
@@ -170,73 +178,69 @@ function App() {
     const vx = dx / (dt || 1)
     const vy = dy / (dt || 1)
 
-    dragXRef.current = 0
-    dragYRef.current = 0
+    const axis = axisRef.current
 
-    if (axisRef.current === 'x') {
+    // Compute target page/row
+    let nextCol = currentCol
+    let nextRow = currentRow
+
+    if (axis === 'x') {
       const passed =
         Math.abs(dx) > W() * DRAG_THRESHOLD ||
         Math.abs(vx) > VELOCITY_THRESHOLD
-
-      let nextCol = currentCol
       if (passed) {
         if (dx < 0) nextCol = Math.min(currentCol + 1, GRID.length - 1)
         if (dx > 0) nextCol = Math.max(currentCol - 1, 0)
       }
-
-      if (nextCol !== currentCol) {
-        lockedRef.current = true
-        if (trackRef.current) {
-          trackRef.current.style.transition = 'none'
-          trackRef.current.style.transform =
-            `translate3d(${-nextCol * W()}px, ${-pageIndexByCol[nextCol] * H()}px, 0)`
-        }
-        void trackRef.current.offsetWidth
-        setCurrentCol(nextCol)
-      } else {
-        applyTransform(0, 0, true)
-      }
-
-      setTimeout(() => {
-        lockedRef.current = false
-      }, ANIM_MS + 20)
-    } else if (axisRef.current === 'y') {
+    } else if (axis === 'y') {
+      const subCount = GRID[currentCol].pages.length
       const passed =
         Math.abs(dy) > H() * DRAG_THRESHOLD ||
         Math.abs(vy) > VELOCITY_THRESHOLD
-
-      const subCount = GRID[currentCol].pages.length
-      let nextRow = currentRow
       if (passed) {
         if (dy < 0) nextRow = Math.min(currentRow + 1, subCount - 1)
         if (dy > 0) nextRow = Math.max(currentRow - 1, 0)
       }
-
-      if (nextRow !== currentRow) {
-        if (trackRef.current) {
-          trackRef.current.style.transition = 'none'
-          trackRef.current.style.transform =
-            `translate3d(${-currentCol * W()}px, ${-nextRow * H()}px, 0)`
-        }
-        void trackRef.current.offsetWidth
-        setPageIndexByCol((prev) => {
-          const next = [...prev]
-          next[currentCol] = nextRow
-          return next
-        })
-      } else {
-        applyTransform(0, 0, true)
-      }
-    } else {
-      applyTransform(0, 0, true)
     }
 
+    // Animate from CURRENT visual position → target position.
+    // The transition picks up the live transform value as the "from".
+    animateTo(nextCol, nextRow)
+
+    // Update state so React re-renders with the new active page.
+    // We do this AFTER kicking off the animation so the track keeps its
+    // current transform during the transition.
+    if (nextCol !== currentCol || nextRow !== currentRow) {
+      lockedRef.current = true
+
+      // Defer state update one frame so the browser registers the
+      // "from" transform before React re-renders.
+      requestAnimationFrame(() => {
+        if (nextCol !== currentCol) setCurrentCol(nextCol)
+        if (nextRow !== currentRow) {
+          setPageIndexByCol((prev) => {
+            const next = [...prev]
+            next[currentCol] = nextRow
+            return next
+          })
+        }
+      })
+
+      setTimeout(() => {
+        lockedRef.current = false
+      }, ANIM_MS + 20)
+    }
+
+    // Reset drag bookkeeping for the next gesture (doesn't affect animation)
+    dragXRef.current = 0
+    dragYRef.current = 0
     axisRef.current = null
   }
 
   // ---- Animate on col/row change ----
   useEffect(() => {
-    applyTransform(0, 0, true)
+    const { x, y } = targetFor(currentCol, currentRow)
+    setTrackTransform(x, y, true)
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [currentCol, currentRow])
 
@@ -263,7 +267,9 @@ function App() {
 
   // ---- Recompute on resize ----
   useEffect(() => {
-    applyTransform(0, 0, true)
+    const onResize = () => applyTransform(0, 0, false)
+    window.addEventListener('resize', onResize)
+    return () => window.removeEventListener('resize', onResize)
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [currentCol, currentRow])
 
