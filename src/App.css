@@ -12,15 +12,20 @@ html, body, #root { height: 100%; overflow: hidden; }
   height: 100vh;
   overflow: hidden;
   position: relative;
-  touch-action: pan-y; 
+  touch-action: none; 
 }
 
 .track {
   display: flex; 
-  width: calc(100vw * var(--cols, 3));
   height: 100vh;
   transform: translate3d(0,0,0);
   will-change: transform;
+}
+
+.column {
+  flex: 0 0 100vw;
+  width: 100vw;
+  position: relative;
 }
 
 /* ===== Page ===== */

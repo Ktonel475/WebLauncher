@@ -23,9 +23,10 @@ const GRID = [
 const SIDE_TAB_COL = 0
 
 // Gesture tuning
-const DRAG_THRESHOLD = 0.2       // 20% of screen width
+const DRAG_THRESHOLD = 0.2       // 20% of screen
 const VELOCITY_THRESHOLD = 0.5   // px/ms
 const ANIM_MS = 350
+const AXIS_LOCK_PX = 8           // movement needed before locking an axis
 
 function App() {
   const [apps, setApps] = useState([])
@@ -37,14 +38,25 @@ function App() {
   const trackRef = useRef(null)
   const sideTabRef = useRef(null)
 
+  // Gesture refs
   const startXRef = useRef(0)
+  const startYRef = useRef(0)
   const startTimeRef = useRef(0)
   const dragXRef = useRef(0)
+  const dragYRef = useRef(0)
   const draggingRef = useRef(false)
+  const axisRef = useRef(null)        // 'x' | 'y' | null
   const lockedRef = useRef(false)
   const prevColRef = useRef(0)
 
   const W = () => window.innerWidth
+  const H = () => window.innerHeight
+
+  // ---- Derived values ----
+  const currentRow = pageIndexByCol[currentCol]
+  const sideTabPages = GRID[SIDE_TAB_COL].pages
+  const sideTabIndex = pageIndexByCol[SIDE_TAB_COL]
+  const isSideTabVisible = currentCol === SIDE_TAB_COL
 
   // ---- Load apps via Bridge API ----
   useEffect(() => {
@@ -74,27 +86,26 @@ function App() {
     })
   })
 
-  // ---- Transform (track + side tab) ----
-  const applyTransform = (offset = 0, animate = false) => {
+  // ---- Transform (2D: track + side tab) ----
+  const applyTransform = (dx = 0, dy = 0, animate = false) => {
+    const transition = animate
+      ? `transform ${ANIM_MS}ms cubic-bezier(0.22, 1, 0.36, 1)`
+      : 'none'
+
     if (trackRef.current) {
-      trackRef.current.style.transition = animate
-        ? `transform ${ANIM_MS}ms cubic-bezier(0.22, 1, 0.36, 1)`
-        : 'none'
+      trackRef.current.style.transition = transition
       trackRef.current.style.transform =
-        `translate3d(${-currentCol * W() + offset}px, 0, 0)`
+        `translate3d(${-currentCol * W() + dx}px, ${-currentRow * H() + dy}px, 0)`
     }
     if (sideTabRef.current) {
-      // Side tab mirrors page 1's displacement, clamped so it stays parked
-      // off-screen once we're past column 0.
+      // Side tab mirrors page 1's horizontal displacement only,
+      // clamped so it stays parked off-screen past column 0.
       const displaced = Math.min(
-        Math.max(-currentCol * W() + offset, -W()),
+        Math.max(-currentCol * W() + dx, -W()),
         0
       )
-      sideTabRef.current.style.transition = animate
-        ? `transform ${ANIM_MS}ms cubic-bezier(0.22, 1, 0.36, 1)`
-        : 'none'
-      sideTabRef.current.style.transform =
-        `translate3d(${displaced}px, 0, 0)`
+      sideTabRef.current.style.transition = transition
+      sideTabRef.current.style.transform = `translate3d(${displaced}px, 0, 0)`
     }
   }
 
@@ -102,23 +113,51 @@ function App() {
   const onPointerDown = (e) => {
     if (lockedRef.current) return
     draggingRef.current = true
+    axisRef.current = null
     startXRef.current = e.clientX
+    startYRef.current = e.clientY
     startTimeRef.current = performance.now()
     dragXRef.current = 0
-    applyTransform(0, false)
+    dragYRef.current = 0
+    applyTransform(0, 0, false)
   }
 
   const onPointerMove = (e) => {
     if (!draggingRef.current) return
-    let dx = e.clientX - startXRef.current
 
-    // Resistance at edges
-    const atStart = currentCol === 0 && dx > 0
-    const atEnd = currentCol === GRID.length - 1 && dx < 0
-    if (atStart || atEnd) dx *= 0.3
+    let dx = e.clientX - startXRef.current
+    let dy = e.clientY - startYRef.current
+
+    // Decide axis once per gesture
+    if (!axisRef.current) {
+      const ax = Math.abs(dx)
+      const ay = Math.abs(dy)
+      if (ax > AXIS_LOCK_PX || ay > AXIS_LOCK_PX) {
+        axisRef.current = ax > ay ? 'x' : 'y'
+      }
+    }
+
+    if (axisRef.current === 'x') {
+      // Horizontal — clamp at first/last column
+      const atStart = currentCol === 0 && dx > 0
+      const atEnd = currentCol === GRID.length - 1 && dx < 0
+      if (atStart || atEnd) dx *= 0.3
+      dy = 0
+    } else if (axisRef.current === 'y') {
+      // Vertical — clamp at first/last sub-page of the *current* column
+      const subCount = GRID[currentCol].pages.length
+      const atTop = currentRow === 0 && dy > 0
+      const atBottom = currentRow === subCount - 1 && dy < 0
+      if (atTop || atBottom) dy *= 0.3
+      dx = 0
+    } else {
+      // Undecided — don't move yet
+      return
+    }
 
     dragXRef.current = dx
-    applyTransform(dx, false)
+    dragYRef.current = dy
+    applyTransform(dx, dy, false)
   }
 
   const onPointerUp = () => {
@@ -126,47 +165,75 @@ function App() {
     draggingRef.current = false
 
     const dx = dragXRef.current
+    const dy = dragYRef.current
     const dt = performance.now() - startTimeRef.current
-    const velocity = dx / (dt || 1)
+    const vx = dx / (dt || 1)
+    const vy = dy / (dt || 1)
 
-    const passedThreshold =
-      Math.abs(dx) > W() * DRAG_THRESHOLD ||
-      Math.abs(velocity) > VELOCITY_THRESHOLD
+    if (axisRef.current === 'x') {
+      const passed =
+        Math.abs(dx) > W() * DRAG_THRESHOLD ||
+        Math.abs(vx) > VELOCITY_THRESHOLD
 
-    let nextCol = currentCol
-    if (passedThreshold) {
-      if (dx < 0) nextCol = Math.min(currentCol + 1, GRID.length - 1)
-      if (dx > 0) nextCol = Math.max(currentCol - 1, 0)
-    }
+      let nextCol = currentCol
+      if (passed) {
+        if (dx < 0) nextCol = Math.min(currentCol + 1, GRID.length - 1)
+        if (dx > 0) nextCol = Math.max(currentCol - 1, 0)
+      }
 
-    if (nextCol !== currentCol) {
-      lockedRef.current = true
-      setCurrentCol(nextCol)
-      // applyTransform will run via effect below with animate = true
+      if (nextCol !== currentCol) {
+        lockedRef.current = true
+        setCurrentCol(nextCol)
+      } else {
+        applyTransform(0, 0, true)
+      }
+
+      setTimeout(() => {
+        lockedRef.current = false
+      }, ANIM_MS + 20)
+    } else if (axisRef.current === 'y') {
+      const passed =
+        Math.abs(dy) > H() * DRAG_THRESHOLD ||
+        Math.abs(vy) > VELOCITY_THRESHOLD
+
+      const subCount = GRID[currentCol].pages.length
+      let nextRow = currentRow
+      if (passed) {
+        if (dy < 0) nextRow = Math.min(currentRow + 1, subCount - 1)
+        if (dy > 0) nextRow = Math.max(currentRow - 1, 0)
+      }
+
+      if (nextRow !== currentRow) {
+        setPageIndexByCol((prev) => {
+          const next = [...prev]
+          next[currentCol] = nextRow
+          return next
+        })
+      } else {
+        applyTransform(0, 0, true)
+      }
     } else {
-      // bounce back to current column
-      applyTransform(0, true)
+      // No axis locked (a tap) — settle back
+      applyTransform(0, 0, true)
     }
 
+    axisRef.current = null
     dragXRef.current = 0
-
-    setTimeout(() => {
-      lockedRef.current = false
-    }, ANIM_MS + 20)
+    dragYRef.current = 0
   }
 
-  // ---- Animate on currentCol change ----
+  // ---- Animate on col/row change ----
   useEffect(() => {
-    applyTransform(0, true)
+    applyTransform(0, 0, true)
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [currentCol])
+  }, [currentCol, currentRow])
 
   // ---- Sync side tab visibility on col change ----
   useEffect(() => {
     if (!sideTabRef.current) return
-    const isVisible = currentCol === SIDE_TAB_COL
-    sideTabRef.current.style.pointerEvents = isVisible ? 'auto' : 'none'
-    sideTabRef.current.setAttribute('aria-hidden', isVisible ? 'false' : 'true')
+    const visible = currentCol === SIDE_TAB_COL
+    sideTabRef.current.style.pointerEvents = visible ? 'auto' : 'none'
+    sideTabRef.current.setAttribute('aria-hidden', visible ? 'false' : 'true')
   }, [currentCol])
 
   // ---- Reset page 1 sub-index when leaving col 0 ----
@@ -184,11 +251,11 @@ function App() {
 
   // ---- Recompute on resize ----
   useEffect(() => {
-    const onResize = () => applyTransform(0, false)
+    const onResize = () => applyTransform(0, 0, false)
     window.addEventListener('resize', onResize)
     return () => window.removeEventListener('resize', onResize)
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [currentCol])
+  }, [currentCol, currentRow])
 
   // ---- Sub-page navigation via side tab ----
   const goToSubPage = (colIndex, pageIndex) => {
@@ -209,13 +276,9 @@ function App() {
     }, ANIM_MS + 20)
   }
 
-  const sideTabPages = GRID[SIDE_TAB_COL].pages
-  const sideTabIndex = pageIndexByCol[SIDE_TAB_COL]
-  const isSideTabVisible = currentCol === SIDE_TAB_COL
-
   return (
     <div className="launcher">
-      {/* ===== Horizontal track (transform-based) ===== */}
+      {/* ===== 2D track ===== */}
       <div className="viewport">
         <div
           className="track"
@@ -229,39 +292,58 @@ function App() {
         >
           {GRID.map((col, colIndex) => {
             const activeSubIndex = pageIndexByCol[colIndex]
-            const activePage = col.pages[activeSubIndex]
             return (
               <div
                 key={col.id}
-                className="page"
-                style={{ background: activePage.color }}
+                className="column"
+                style={{
+                  flex: '0 0 100vw',
+                  width: '100vw',
+                  height: `${col.pages.length * 100}vh`,
+                  position: 'relative',
+                }}
               >
-                <div className="page-label">
-                  {activePage.label}
-                  <span className="page-counter">
-                    {activeSubIndex + 1} / {col.pages.length}
-                  </span>
-                </div>
+                {col.pages.map((pageMeta, rowIndex) => (
+                  <div
+                    key={pageMeta.id}
+                    className="page"
+                    style={{
+                      background: pageMeta.color,
+                      position: 'absolute',
+                      top: `${rowIndex * 100}vh`,
+                      left: 0,
+                      width: '100vw',
+                      height: '100vh',
+                    }}
+                  >
+                    <div className="page-label">
+                      {pageMeta.label}
+                      <span className="page-counter">
+                        {rowIndex + 1} / {col.pages.length}
+                      </span>
+                    </div>
 
-                <div className="app-grid" key={activePage.id}>
-                  {appsByPage[activePage.id].map((app) => (
-                    <button
-                      key={app.package + app.activity}
-                      className="app-icon"
-                      onClick={() => launch(app.package, app.activity)}
-                    >
-                      <img
-                        src={window.Bridge.getApplicationIconSrc(
-                          app.package,
-                          app.activity,
-                          128
-                        )}
-                        alt={app.name}
-                      />
-                      <span>{app.name}</span>
-                    </button>
-                  ))}
-                </div>
+                    <div className="app-grid" key={pageMeta.id}>
+                      {appsByPage[pageMeta.id].map((app) => (
+                        <button
+                          key={app.package + app.activity}
+                          className="app-icon"
+                          onClick={() => launch(app.package, app.activity)}
+                        >
+                          <img
+                            src={window.Bridge.getApplicationIconSrc(
+                              app.package,
+                              app.activity,
+                              128
+                            )}
+                            alt={app.name}
+                          />
+                          <span>{app.name}</span>
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                ))}
               </div>
             )
           })}
