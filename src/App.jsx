@@ -12,11 +12,11 @@ const GRID = [
   },
   {
     id: 'col-1',
-    pages: [{ id: '2', label: 'Page 2', color: '#533483' }],
+    pages: [{ id: '2', label: 'Page 2', color: 'transparent' }],
   },
   {
     id: 'col-2',
-    pages: [{ id: '3', label: 'Page 3', color: '#2c2c54' }],
+    pages: [{ id: '3', label: 'Page 3', color: 'transparent' }],
   },
 ]
 
@@ -170,6 +170,9 @@ function App() {
     const vx = dx / (dt || 1)
     const vy = dy / (dt || 1)
 
+    dragXRef.current = 0
+    dragYRef.current = 0
+
     if (axisRef.current === 'x') {
       const passed =
         Math.abs(dx) > W() * DRAG_THRESHOLD ||
@@ -183,6 +186,12 @@ function App() {
 
       if (nextCol !== currentCol) {
         lockedRef.current = true
+        if (trackRef.current) {
+          trackRef.current.style.transition = 'none'
+          trackRef.current.style.transform =
+            `translate3d(${-nextCol * W()}px, ${-pageIndexByCol[nextCol] * H()}px, 0)`
+        }
+        void trackRef.current.offsetWidth
         setCurrentCol(nextCol)
       } else {
         applyTransform(0, 0, true)
@@ -204,6 +213,12 @@ function App() {
       }
 
       if (nextRow !== currentRow) {
+        if (trackRef.current) {
+          trackRef.current.style.transition = 'none'
+          trackRef.current.style.transform =
+            `translate3d(${-currentCol * W()}px, ${-nextRow * H()}px, 0)`
+        }
+        void trackRef.current.offsetWidth
         setPageIndexByCol((prev) => {
           const next = [...prev]
           next[currentCol] = nextRow
@@ -213,13 +228,10 @@ function App() {
         applyTransform(0, 0, true)
       }
     } else {
-      // No axis locked (a tap) — settle back
       applyTransform(0, 0, true)
     }
 
     axisRef.current = null
-    dragXRef.current = 0
-    dragYRef.current = 0
   }
 
   // ---- Animate on col/row change ----
@@ -251,9 +263,7 @@ function App() {
 
   // ---- Recompute on resize ----
   useEffect(() => {
-    const onResize = () => applyTransform(0, 0, false)
-    window.addEventListener('resize', onResize)
-    return () => window.removeEventListener('resize', onResize)
+    applyTransform(0, 0, true)
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [currentCol, currentRow])
 
