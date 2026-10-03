@@ -4,10 +4,16 @@ import './App.css'
 const GRID = [
   {
     id: 'col-0',
+    rectangles: [
+      { id: 'rect-1', topVh: 55, heightVh: 100, variant: 'upper' },
+      { id: 'rect-2', topVh: 60, heightVh: 100, variant: 'lower' },
+      { id: 'rect-3', topVh: 155, heightVh: 100, variant: 'upper' },
+      { id: 'rect-4', topVh: 160, heightVh: 100, variant: 'lower' },
+    ],
     pages: [
-      { id: '1a', label: 'Page 1a', color: '#1a1a2e' },
-      { id: '1b', label: 'Page 1b', color: '#16213e' },
-      { id: '1c', label: 'Page 1c', color: '#0f3460' },
+      { id: '1a', label: 'Page 1a', color: '#f4e7b0' },
+      { id: '1b', label: 'Page 1b', color: '#f4e7b0' },
+      { id: '1c', label: 'Page 1c', color: '#f4e7b0' },
     ],
   },
   {
@@ -22,11 +28,90 @@ const GRID = [
 
 const SIDE_TAB_COL = 0
 
-// Gesture tuning
-const DRAG_THRESHOLD = 0.2       // 20% of screen
-const VELOCITY_THRESHOLD = 0.5   // px/ms
+const DRAG_THRESHOLD = 0.2
+const VELOCITY_THRESHOLD = 0.5
 const ANIM_MS = 350
-const AXIS_LOCK_PX = 8           // movement needed before locking an axis
+const AXIS_LOCK_PX = 8
+
+// ==================================================
+// COLUMN RECTANGLE — spans two pages with slanted
+// top + bottom edges (parallelogram), flush to sides
+// ==================================================
+function ColumnRectangle({ topVh = 0, heightVh = 200, variant = 'upper' }) {
+  return (
+    <div
+      className={`column-rect column-rect-${variant}`}
+      style={{
+        top: `${topVh}vh`,
+        height: `${heightVh}vh`,
+      }}
+      aria-hidden="true"
+    >
+      <div className="column-rect-bg" />
+    </div>
+  )
+}
+
+// ==================================================
+// SIDE TAB
+// ==================================================
+function SideTab({
+  innerRef,
+  visible,
+  dockCount,
+  dockIndex,
+  onDockClick,
+}) {
+  const [now, setNow] = useState(new Date())
+
+  useEffect(() => {
+    const id = setInterval(() => setNow(new Date()), 1000)
+    return () => clearInterval(id)
+  }, [])
+
+  const timeStr = now.toLocaleTimeString([], {
+    hour: '2-digit',
+    minute: '2-digit',
+    hour12: false,
+  })
+
+  return (
+    <div className="side-tab" ref={innerRef} aria-hidden={!visible}>
+      <div className="side-tab-rail" />
+
+      <div className="side-tab-content">
+        <div className="side-avatar">
+          <span>◐</span>
+        </div>
+
+        <div className="side-clock">{timeStr}</div>
+
+        <div className="side-battery">
+          <span>55%</span>
+          <span className="side-battery-icon">▯</span>
+        </div>
+
+        <div className="side-meta">Made by Ktone1666</div>
+
+        <div className="side-divider" />
+
+        <div className="side-dock">
+          {Array.from({ length: dockCount }).map((_, i) => (
+            <button
+              key={i}
+              className={'side-dock-btn' + (i === dockIndex ? ' active' : '')}
+              aria-label={`Dock item ${i + 1}`}
+              tabIndex={visible ? 0 : -1}
+              onClick={() => onDockClick(i)}
+            >
+              {String.fromCharCode(65 + i)}
+            </button>
+          ))}
+        </div>
+      </div>
+    </div>
+  )
+}
 
 function App() {
   const [apps, setApps] = useState([])
@@ -38,27 +123,22 @@ function App() {
   const trackRef = useRef(null)
   const sideTabRef = useRef(null)
 
-  // Gesture refs
   const startXRef = useRef(0)
   const startYRef = useRef(0)
   const startTimeRef = useRef(0)
   const dragXRef = useRef(0)
   const dragYRef = useRef(0)
   const draggingRef = useRef(false)
-  const axisRef = useRef(null)        // 'x' | 'y' | null
+  const axisRef = useRef(null)
   const lockedRef = useRef(false)
   const prevColRef = useRef(0)
 
   const W = () => window.innerWidth
   const H = () => window.innerHeight
 
-  // ---- Derived values ----
   const currentRow = pageIndexByCol[currentCol]
-  const sideTabPages = GRID[SIDE_TAB_COL].pages
-  const sideTabIndex = pageIndexByCol[SIDE_TAB_COL]
   const isSideTabVisible = currentCol === SIDE_TAB_COL
 
-  // ---- Load apps via Bridge API ----
   useEffect(() => {
     async function loadApps() {
       try {
@@ -76,7 +156,6 @@ function App() {
     window.Bridge.launchApplication(pkg, activity)
   }
 
-  // ---- Distribute apps: 8 per sub-page, column-major ----
   const appsByPage = {}
   let cursor = 0
   GRID.forEach((col) => {
@@ -86,7 +165,9 @@ function App() {
     })
   })
 
-  // ---- Transform (2D: track + side tab) ----
+  // ==================================================
+  // TRANSFORM HELPERS
+  // ==================================================
   const setTrackTransform = (tx, ty, animate) => {
     if (!trackRef.current) return
     trackRef.current.style.transition = animate
@@ -103,19 +184,19 @@ function App() {
     }
   }
 
-  // Convenience: target position for a given column/row
   const targetFor = (col, row) => ({
     x: -col * W(),
     y: -row * H(),
   })
 
-  // Animate from current visual position to a column/row target
   const animateTo = (col, row) => {
     const { x, y } = targetFor(col, row)
     setTrackTransform(x, y, true)
   }
 
-  // ---- Pointer gesture handlers ----
+  // ==================================================
+  // POINTER HANDLERS
+  // ==================================================
   const onPointerDown = (e) => {
     if (lockedRef.current) return
     draggingRef.current = true
@@ -125,7 +206,7 @@ function App() {
     startTimeRef.current = performance.now()
     dragXRef.current = 0
     dragYRef.current = 0
-    applyTransform(0, 0, false)
+    setTrackTransform(-currentCol * W(), -currentRow * H(), false)
   }
 
   const onPointerMove = (e) => {
@@ -160,7 +241,6 @@ function App() {
     dragXRef.current = dx
     dragYRef.current = dy
 
-    // Write the live position directly (no transition)
     setTrackTransform(
       -currentCol * W() + dx,
       -currentRow * H() + dy,
@@ -180,7 +260,6 @@ function App() {
 
     const axis = axisRef.current
 
-    // Compute target page/row
     let nextCol = currentCol
     let nextRow = currentRow
 
@@ -203,18 +282,10 @@ function App() {
       }
     }
 
-    // Animate from CURRENT visual position → target position.
-    // The transition picks up the live transform value as the "from".
     animateTo(nextCol, nextRow)
 
-    // Update state so React re-renders with the new active page.
-    // We do this AFTER kicking off the animation so the track keeps its
-    // current transform during the transition.
     if (nextCol !== currentCol || nextRow !== currentRow) {
       lockedRef.current = true
-
-      // Defer state update one frame so the browser registers the
-      // "from" transform before React re-renders.
       requestAnimationFrame(() => {
         if (nextCol !== currentCol) setCurrentCol(nextCol)
         if (nextRow !== currentRow) {
@@ -225,34 +296,28 @@ function App() {
           })
         }
       })
-
       setTimeout(() => {
         lockedRef.current = false
       }, ANIM_MS + 20)
     }
 
-    // Reset drag bookkeeping for the next gesture (doesn't affect animation)
     dragXRef.current = 0
     dragYRef.current = 0
     axisRef.current = null
   }
 
-  // ---- Animate on col/row change ----
   useEffect(() => {
     const { x, y } = targetFor(currentCol, currentRow)
     setTrackTransform(x, y, true)
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [currentCol, currentRow])
 
-  // ---- Sync side tab visibility on col change ----
   useEffect(() => {
     if (!sideTabRef.current) return
     const visible = currentCol === SIDE_TAB_COL
     sideTabRef.current.style.pointerEvents = visible ? 'auto' : 'none'
-    sideTabRef.current.setAttribute('aria-hidden', visible ? 'false' : 'true')
   }, [currentCol])
 
-  // ---- Reset page 1 sub-index when leaving col 0 ----
   useEffect(() => {
     const prevCol = prevColRef.current
     if (prevCol === SIDE_TAB_COL && currentCol !== SIDE_TAB_COL) {
@@ -265,24 +330,16 @@ function App() {
     prevColRef.current = currentCol
   }, [currentCol])
 
-  // ---- Recompute on resize ----
   useEffect(() => {
-    const onResize = () => applyTransform(0, 0, false)
+    const onResize = () => {
+      const { x, y } = targetFor(currentCol, currentRow)
+      setTrackTransform(x, y, false)
+    }
     window.addEventListener('resize', onResize)
     return () => window.removeEventListener('resize', onResize)
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [currentCol, currentRow])
 
-  // ---- Sub-page navigation via side tab ----
-  const goToSubPage = (colIndex, pageIndex) => {
-    setPageIndexByCol((prev) => {
-      const next = [...prev]
-      next[colIndex] = pageIndex
-      return next
-    })
-  }
-
-  // ---- Column navigation via bottom indicator ----
   const goToCol = (col) => {
     if (lockedRef.current || col === currentCol) return
     lockedRef.current = true
@@ -292,9 +349,19 @@ function App() {
     }, ANIM_MS + 20)
   }
 
+  const goToSubPage = (colIndex, pageIndex) => {
+    setPageIndexByCol((prev) => {
+      const next = [...prev]
+      next[colIndex] = pageIndex
+      return next
+    })
+  }
+
+  // ==================================================
+  // RENDER
+  // ==================================================
   return (
     <div className="launcher">
-      {/* ===== 2D track ===== */}
       <div className="viewport">
         <div
           className="track"
@@ -306,8 +373,9 @@ function App() {
           onPointerCancel={onPointerUp}
           onPointerLeave={onPointerUp}
         >
-          {GRID.map((col, colIndex) => {
-            const activeSubIndex = pageIndexByCol[colIndex]
+          {GRID.map((col) => {
+            const columnHeightVh = col.pages.length * 100
+
             return (
               <div
                 key={col.id}
@@ -315,10 +383,21 @@ function App() {
                 style={{
                   flex: '0 0 100vw',
                   width: '100vw',
-                  height: `${col.pages.length * 100}vh`,
+                  height: `${columnHeightVh}vh`,
                   position: 'relative',
                 }}
               >
+                {/* Rectangle overlays — each spans two pages */}
+                {col.rectangles &&
+                  col.rectangles.map((rect) => (
+                    <ColumnRectangle
+                      key={rect.id}
+                      topVh={rect.topVh}
+                      heightVh={rect.heightVh}
+                      variant={rect.variant}
+                    />
+                  ))}
+
                 {col.pages.map((pageMeta, rowIndex) => (
                   <div
                     key={pageMeta.id}
@@ -330,14 +409,10 @@ function App() {
                       left: 0,
                       width: '100vw',
                       height: '100vh',
+                      zIndex: 2,
                     }}
                   >
-                    <div className="page-label">
-                      {pageMeta.label}
-                      <span className="page-counter">
-                        {rowIndex + 1} / {col.pages.length}
-                      </span>
-                    </div>
+                    <div className="page-label">{pageMeta.label}</div>
 
                     <div className="app-grid" key={pageMeta.id}>
                       {appsByPage[pageMeta.id].map((app) => (
@@ -366,23 +441,14 @@ function App() {
         </div>
       </div>
 
-      {/* ===== Right side tab (rides with page 1) ===== */}
-      <div className="side-tab" ref={sideTabRef} aria-hidden="true">
-        <div className="side-tab-rail" />
-        <div className="side-tab-inner">
-          {sideTabPages.map((pageMeta, i) => (
-            <button
-              key={pageMeta.id}
-              className={'side-dot' + (i === sideTabIndex ? ' active' : '')}
-              aria-label={`Go to ${pageMeta.label}`}
-              tabIndex={isSideTabVisible ? 0 : -1}
-              onClick={() => goToSubPage(SIDE_TAB_COL, i)}
-            />
-          ))}
-        </div>
-      </div>
+      <SideTab
+        innerRef={sideTabRef}
+        visible={isSideTabVisible}
+        dockCount={3}
+        dockIndex={currentRow}
+        onDockClick={(i) => goToSubPage(SIDE_TAB_COL, i)}
+      />
 
-      {/* ===== Bottom column indicator ===== */}
       <div className="indicator">
         {GRID.map((col, colIndex) => (
           <button

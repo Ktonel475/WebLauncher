@@ -1,67 +1,94 @@
-* { margin: 0; padding: 0; box-sizing: border-box; }
-html, body, #root { height: 100%; overflow: hidden; }
+/* ==================================================
+   RESET + BASE
+   ================================================== */
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
 
+html,
+body,
+#root {
+  height: 100%;
+  overflow: hidden;
+  color: white;
+  font-family: system-ui, -apple-system, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-tap-highlight-color: transparent;
+  background: #000;
+}
+
+/* ==================================================
+   LAUNCHER
+   ================================================== */
 .launcher {
   position: relative;
   width: 100vw;
   height: 100vh;
+  overflow: hidden;
 }
 
+/* ==================================================
+   VIEWPORT + TRACK
+   ================================================== */
 .viewport {
   width: 100vw;
   height: 100vh;
   overflow: hidden;
   position: relative;
-  touch-action: none; 
+  touch-action: none;
 }
 
 .track {
-  display: flex; 
+  display: flex;
   height: 100vh;
-  transform: translate3d(0,0,0);
+  transform: translate3d(0, 0, 0);
   will-change: transform;
+  backface-visibility: hidden;
 }
 
 .column {
   flex: 0 0 100vw;
   width: 100vw;
   position: relative;
+  overflow: visible;
 }
 
-/* ===== Page ===== */
+/* ==================================================
+   PAGE
+   ================================================== */
 .page {
-  flex: 0 0 100vw;
   width: 100vw;
   height: 100vh;
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  padding: 24px;
-  position: relative;
-  transition: background 0.4s ease;
+  padding: 24px 72px 24px 24px;
+  position: absolute;
+  left: 0;
+  overflow: hidden;
+  z-index: 2;
 }
 
 .page-label {
   position: absolute;
   top: 24px;
   left: 24px;
-  color: rgba(255, 255, 255, 0.75);
-  font-family: system-ui, sans-serif;
+  color: rgba(0, 0, 0, 0.45);
   font-size: 14px;
   text-transform: uppercase;
   letter-spacing: 1px;
-  display: flex;
-  align-items: center;
-  gap: 10px;
-}
-.page-counter {
-  font-size: 11px;
-  padding: 2px 8px;
-  background: rgba(255, 255, 255, 0.15);
-  border-radius: 999px;
+  z-index: 3;
 }
 
+/* ==================================================
+   APP GRID
+   ================================================== */
 .app-grid {
   display: grid;
   grid-template-columns: repeat(4, 1fr);
@@ -69,10 +96,19 @@ html, body, #root { height: 100%; overflow: hidden; }
   width: 100%;
   max-width: 640px;
   animation: fadeIn 0.25s ease;
+  position: relative;
+  z-index: 3;
 }
+
 @keyframes fadeIn {
-  from { opacity: 0; transform: translateY(8px); }
-  to   { opacity: 1; transform: translateY(0); }
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 
 .app-icon {
@@ -83,81 +119,204 @@ html, body, #root { height: 100%; overflow: hidden; }
   background: none;
   border: none;
   cursor: pointer;
-  color: white;
-  font-family: system-ui, sans-serif;
+  color: #333;
   font-size: 12px;
   padding: 8px;
   border-radius: 12px;
-  transition: background 0.2s, transform 0.15s;
+  transition: background 0.2s ease, transform 0.15s ease;
 }
-.app-icon:hover { background: rgba(255, 255, 255, 0.08); }
-.app-icon:active { transform: scale(0.95); }
-.app-icon img { width: 56px; height: 56px; border-radius: 14px; }
+.app-icon:hover {
+  background: rgba(0, 0, 0, 0.06);
+}
+.app-icon:active {
+  transform: scale(0.95);
+}
+.app-icon img {
+  width: 56px;
+  height: 56px;
+  border-radius: 14px;
+  pointer-events: none;
+}
+.app-icon span {
+  pointer-events: none;
+  text-align: center;
+  line-height: 1.2;
+  max-width: 72px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
 
-/* ===== Right side tab (full height) ===== */
+/* ==================================================
+   COLUMN RECTANGLES — slanted top + bottom edges,
+   flush to left/right viewport edges
+   ================================================== */
+.column-rect {
+  position: absolute;
+  left: 0;
+  width: 100vw;
+  pointer-events: none;
+  z-index: 5;
+}
+
+/* ---------- Upper rectangle (over 1a + 1b) ---------- */
+.column-rect-upper .column-rect-bg {
+  position: absolute;
+  inset: 0;
+  background: rgba(30, 30, 30, 0.55);
+  clip-path: polygon(
+    0 40%,
+    100% 0,
+    100% 60%,
+    0 100%
+  );
+}
+
+/* ---------- Lower rectangle (over 1b + 1c) ---------- */
+.column-rect-lower .column-rect-bg {
+  position: absolute;
+  inset: 0;
+  background: rgba(30, 30, 30, 0.30);
+  clip-path: polygon(
+    0 40%,
+    100% 0,
+    100% 60%,
+    0 100%
+  );
+}
+
+/* ==================================================
+   SIDE TAB
+   ================================================== */
 .side-tab {
   position: fixed;
   top: 0;
   right: 0;
-  width: 64px;
+  width: 56px;
   height: 100vh;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  z-index: 100;
+  z-index: 20;
   pointer-events: none;
   will-change: transform;
-  transform: translate3d(0, 0, 0);   /* ← prime the GPU layer */
-  backface-visibility: hidden;        /* ← avoids subpixel jitter */
-  contain: layout style paint;        /* ← isolate from the pager */
+  transform: translate3d(0, 0, 0);
+  backface-visibility: hidden;
 }
 
 .side-tab-rail {
   position: absolute;
-  top: 0;
-  bottom: 0;
-  right: 0px;
-  width: 60px;
-  background: #6a6dcc; 
-  pointer-events: none;
+  inset: 0;
+  width: 56px;
+  background: rgba(200, 180, 130, 0.35);
+  backdrop-filter: blur(24px) saturate(140%);
+  -webkit-backdrop-filter: blur(24px) saturate(140%);
+  border-left: 1px solid rgba(255, 255, 255, 0.12);
 }
 
-/* Buttons group — vertically centered, its own pill */
-.side-tab-inner {
+.side-tab-content {
   position: relative;
+  width: 56px;
+  height: 100vh;
   display: flex;
   flex-direction: column;
   align-items: center;
-  justify-content: center;
-  gap: 14px;
-  padding: 18px 12px;
-  background: rgba(0, 0, 0, 0.35);
-  backdrop-filter: blur(12px);
-  -webkit-backdrop-filter: blur(12px);
-  border-radius: 999px;
+  padding: 20px 0;
+  gap: 12px;
   pointer-events: auto;
-  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.25);
+  color: white;
 }
 
-.side-dot {
-  width: 10px;
-  height: 10px;
+.side-avatar {
+  width: 40px;
+  height: 40px;
   border-radius: 50%;
-  background: rgba(255, 255, 255, 0.4);
-  border: none;
-  cursor: pointer;
-  padding: 0;
-  transition: all 0.25s ease;
+  background: rgba(255, 255, 255, 0.18);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 18px;
+  border: 2px solid rgba(255, 255, 255, 0.35);
+  overflow: hidden;
+  flex-shrink: 0;
 }
-.side-dot:hover { background: rgba(255, 255, 255, 0.75); }
-.side-dot.active {
-  background: #ffffff;
-  width: 12px;
-  height: 12px;
-  box-shadow: 0 0 10px rgba(255, 255, 255, 0.9);
+.side-avatar img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
 }
 
-/* ===== Bottom indicator ===== */
+.side-clock {
+  font-size: 22px;
+  font-weight: 700;
+  letter-spacing: -0.5px;
+  writing-mode: vertical-rl;
+  transform: rotate(180deg);
+  margin-top: 8px;
+  line-height: 1;
+  text-shadow: 0 1px 6px rgba(0, 0, 0, 0.4);
+}
+
+.side-battery {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  font-size: 11px;
+  opacity: 0.9;
+}
+.side-battery-icon {
+  font-size: 16px;
+}
+
+.side-meta {
+  writing-mode: vertical-rl;
+  transform: rotate(180deg);
+  font-size: 11px;
+  opacity: 0.7;
+  margin-top: 8px;
+  letter-spacing: 0.5px;
+}
+
+.side-divider {
+  width: 3px;
+  height: 32px;
+  background: rgba(255, 255, 255, 0.4);
+  border-radius: 2px;
+  margin: 8px 0;
+}
+
+.side-dock {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: auto;
+  padding-bottom: 20px;
+}
+
+.side-dock-btn {
+  width: 40px;
+  height: 40px;
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.15);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  color: rgba(255, 255, 255, 0.9);
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background 0.25s, transform 0.15s;
+}
+.side-dock-btn:hover {
+  background: rgba(255, 255, 255, 0.25);
+}
+.side-dock-btn.active {
+  background: rgba(255, 255, 255, 0.95);
+  color: #0a0a0a;
+}
+
+/* ==================================================
+   BOTTOM INDICATOR
+   ================================================== */
 .indicator {
   position: fixed;
   bottom: 24px;
@@ -171,22 +330,34 @@ html, body, #root { height: 100%; overflow: hidden; }
   backdrop-filter: blur(12px);
   -webkit-backdrop-filter: blur(12px);
   border-radius: 999px;
-  z-index: 100;
+  z-index: 30;
+  border: 1px solid rgba(255, 255, 255, 0.08);
 }
 
 .dot {
   width: 9px;
   height: 9px;
   border-radius: 50%;
-  background: rgba(255, 255, 255, 0.4);
+  background: rgba(255, 255, 255, 0.5);
   border: none;
   cursor: pointer;
   padding: 0;
   transition: all 0.25s ease;
 }
-.dot:hover { background: rgba(255, 255, 255, 0.75); }
+.dot:hover {
+  background: rgba(255, 255, 255, 0.85);
+}
 .dot.active {
   background: #ffffff;
   width: 24px;
   border-radius: 5px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .track,
+  .side-tab,
+  .app-grid {
+    transition: none !important;
+    animation: none !important;
+  }
 }
