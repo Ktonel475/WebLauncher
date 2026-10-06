@@ -1,4 +1,69 @@
 /* ==================================================
+   GLOBAL TOKENS
+   All colors are derived from --theme.
+   Change --theme and the whole launcher re-skins.
+   ================================================== */
+:root {
+  /* ---- THE MAIN COLOR ---- */
+  --theme: #5267e3;
+
+  /* ---- DERIVED: page ---- */
+  --page-bg: var(--theme);
+
+  /* ---- DERIVED: rectangle fills (dark tint over the page) ---- */
+  /* Upper = darker (55%) — bright enough for date text to pop */
+  --rect-upper-bg: color-mix(in srgb, var(--theme), black 65%);
+
+  /* Lower = lighter (30%) — dimmer secondary band */
+  --rect-lower-bg: color-mix(in srgb, var(--theme), black 75%);
+
+  /* ---- DERIVED: side tab ---- */
+  --side-tab-bg: color-mix(in srgb, var(--theme), black 10%);
+  --side-tab-border: color-mix(in srgb, white, transparent 88%);
+
+  /* ---- DERIVED: page label ---- */
+  --page-label-color: color-mix(in srgb, black, transparent 55%);
+
+  /* ---- DERIVED: app icon text ---- */
+  --app-icon-color: color-mix(in srgb, var(--theme), black 80%);
+
+  /* ---- DERIVED: bottom indicator ---- */
+  --indicator-bg: color-mix(in srgb, black, transparent 65%);
+  --indicator-border: color-mix(in srgb, white, transparent 92%);
+  --dot-color: color-mix(in srgb, white, transparent 50%);
+  --dot-color-hover: color-mix(in srgb, white, transparent 15%);
+  --dot-color-active: #ffffff;
+
+  /* ---- DERIVED: date label ---- */
+  --date-color: color-mix(in srgb, var(--theme), black 10%);
+  --date-shadow: color-mix(in srgb, black, transparent 45%);
+
+  /* ==================================================
+     FLUID TYPOGRAPHY (Option 1: clamp)
+     Format: clamp(min, preferred-vw, max)
+     ================================================== */
+  --date-day-size:  clamp(28px, 12vw, 96px);
+  --date-date-size: clamp(14px, 4vw, 32px);
+
+  --clock-size:     clamp(22px, 4.5vw, 34px);
+  --battery-size:   clamp(11px, 2vw, 14px);
+  --meta-size:      clamp(11px, 2vw, 14px);
+
+  --avatar-size:    clamp(40px, 10vw, 56px);
+  --dock-btn-size:  clamp(40px, 11vw, 56px);
+
+  /* Side tab width scales a bit with viewport too */
+  --side-tab-width: clamp(60px, 16vw, 84px);
+
+  /* Page label */
+  --page-label-size: clamp(12px, 2.6vw, 16px);
+
+  /* App icon */
+  --app-icon-size:      clamp(44px, 12vw, 64px);
+  --app-icon-font-size: clamp(11px, 2.4vw, 14px);
+}
+
+/* ==================================================
    RESET + BASE
    ================================================== */
 * {
@@ -68,7 +133,7 @@ body,
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  padding: 24px 72px 24px 24px;
+  padding: 24px calc(var(--side-tab-width) + 16px) 24px 24px;
   position: absolute;
   left: 0;
   overflow: hidden;
@@ -79,8 +144,8 @@ body,
   position: absolute;
   top: 24px;
   left: 24px;
-  color: rgba(0, 0, 0, 0.45);
-  font-size: 14px;
+  color: var(--page-label-color);
+  font-size: var(--page-label-size);
   text-transform: uppercase;
   letter-spacing: 1px;
   z-index: 3;
@@ -92,7 +157,7 @@ body,
 .app-grid {
   display: grid;
   grid-template-columns: repeat(4, 1fr);
-  gap: 24px;
+  gap: clamp(12px, 4vw, 24px);
   width: 100%;
   max-width: 640px;
   animation: fadeIn 0.25s ease;
@@ -119,21 +184,21 @@ body,
   background: none;
   border: none;
   cursor: pointer;
-  color: #333;
-  font-size: 12px;
+  color: var(--app-icon-color);
+  font-size: var(--app-icon-font-size);
   padding: 8px;
   border-radius: 12px;
   transition: background 0.2s ease, transform 0.15s ease;
 }
 .app-icon:hover {
-  background: rgba(0, 0, 0, 0.06);
+  background: color-mix(in srgb, black, transparent 94%);
 }
 .app-icon:active {
   transform: scale(0.95);
 }
 .app-icon img {
-  width: 56px;
-  height: 56px;
+  width: var(--app-icon-size);
+  height: var(--app-icon-size);
   border-radius: 14px;
   pointer-events: none;
 }
@@ -148,8 +213,7 @@ body,
 }
 
 /* ==================================================
-   COLUMN RECTANGLES — slanted top + bottom edges,
-   flush to left/right viewport edges
+   COLUMN RECTANGLES
    ================================================== */
 .column-rect {
   position: absolute;
@@ -159,11 +223,10 @@ body,
   z-index: 5;
 }
 
-/* ---------- Upper rectangle (over 1a + 1b) ---------- */
 .column-rect-upper .column-rect-bg {
   position: absolute;
   inset: 0;
-  background: rgba(30, 30, 30, 0.55);
+  background: var(--rect-upper-bg);
   clip-path: polygon(
     0 40%,
     100% 0,
@@ -172,11 +235,10 @@ body,
   );
 }
 
-/* ---------- Lower rectangle (over 1b + 1c) ---------- */
 .column-rect-lower .column-rect-bg {
   position: absolute;
   inset: 0;
-  background: rgba(30, 30, 30, 0.30);
+  background: var(--rect-lower-bg);
   clip-path: polygon(
     0 40%,
     100% 0,
@@ -186,13 +248,45 @@ body,
 }
 
 /* ==================================================
+   DATE LABEL — standalone, rotated to match slope
+   ================================================== */
+.date-label {
+  position: absolute;
+  z-index: 6;
+  pointer-events: none;
+  color: var(--date-color);
+  transform-origin: left bottom;
+}
+
+.date-label-left  { left: 40%; }
+.date-label-right { right: 40%; left: auto; }
+
+.date-label-day {
+  font-size: var(--date-day-size);
+  font-weight: 700;
+  letter-spacing: -1px;
+  line-height: 1;
+  color: var(--date-color);
+  text-shadow: 0 2px 12px var(--date-shadow);
+}
+
+.date-label-date {
+  font-size: var(--date-date-size);
+  margin-top: 6px;
+  opacity: 0.85;
+  letter-spacing: 0.5px;
+  color: var(--date-color);
+  text-shadow: 0 1px 6px var(--date-shadow);
+}
+
+/* ==================================================
    SIDE TAB
    ================================================== */
 .side-tab {
   position: fixed;
   top: 0;
   right: 0;
-  width: 56px;
+  width: var(--side-tab-width);
   height: 100vh;
   z-index: 20;
   pointer-events: none;
@@ -204,36 +298,36 @@ body,
 .side-tab-rail {
   position: absolute;
   inset: 0;
-  width: 56px;
-  background: rgba(200, 180, 130, 0.35);
+  width: var(--side-tab-width);
+  background: var(--side-tab-bg);
   backdrop-filter: blur(24px) saturate(140%);
   -webkit-backdrop-filter: blur(24px) saturate(140%);
-  border-left: 1px solid rgba(255, 255, 255, 0.12);
+  border-left: 1px solid var(--side-tab-border);
 }
 
 .side-tab-content {
   position: relative;
-  width: 56px;
+  width: var(--side-tab-width);
   height: 100vh;
   display: flex;
   flex-direction: column;
   align-items: center;
-  padding: 20px 0;
-  gap: 12px;
+  padding: 24px 0;
+  gap: 14px;
   pointer-events: auto;
   color: white;
 }
 
 .side-avatar {
-  width: 40px;
-  height: 40px;
+  width: var(--avatar-size);
+  height: var(--avatar-size);
   border-radius: 50%;
-  background: rgba(255, 255, 255, 0.18);
+  background: color-mix(in srgb, white, transparent 82%);
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 18px;
-  border: 2px solid rgba(255, 255, 255, 0.35);
+  font-size: calc(var(--avatar-size) * 0.42);
+  border: 2px solid color-mix(in srgb, white, transparent 65%);
   overflow: hidden;
   flex-shrink: 0;
 }
@@ -244,14 +338,14 @@ body,
 }
 
 .side-clock {
-  font-size: 22px;
+  font-size: var(--clock-size);
   font-weight: 700;
   letter-spacing: -0.5px;
   writing-mode: vertical-rl;
   transform: rotate(180deg);
-  margin-top: 8px;
+  margin-top: 10px;
   line-height: 1;
-  text-shadow: 0 1px 6px rgba(0, 0, 0, 0.4);
+  text-shadow: 0 1px 8px color-mix(in srgb, black, transparent 55%);
 }
 
 .side-battery {
@@ -259,46 +353,46 @@ body,
   flex-direction: column;
   align-items: center;
   gap: 4px;
-  font-size: 11px;
+  font-size: var(--battery-size);
   opacity: 0.9;
 }
 .side-battery-icon {
-  font-size: 16px;
+  font-size: calc(var(--battery-size) * 1.5);
 }
 
 .side-meta {
   writing-mode: vertical-rl;
   transform: rotate(180deg);
-  font-size: 11px;
-  opacity: 0.7;
-  margin-top: 8px;
+  font-size: var(--meta-size);
+  opacity: 0.75;
+  margin-top: 10px;
   letter-spacing: 0.5px;
 }
 
 .side-divider {
   width: 3px;
-  height: 32px;
-  background: rgba(255, 255, 255, 0.4);
+  height: 36px;
+  background: color-mix(in srgb, white, transparent 60%);
   border-radius: 2px;
-  margin: 8px 0;
+  margin: 10px 0;
 }
 
 .side-dock {
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: 10px;
   margin-top: auto;
-  padding-bottom: 20px;
+  padding-bottom: 24px;
 }
 
 .side-dock-btn {
-  width: 40px;
-  height: 40px;
-  border-radius: 10px;
-  background: rgba(255, 255, 255, 0.15);
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  color: rgba(255, 255, 255, 0.9);
-  font-size: 14px;
+  width: var(--dock-btn-size);
+  height: var(--dock-btn-size);
+  border-radius: 12px;
+  background: color-mix(in srgb, white, transparent 85%);
+  border: 1px solid color-mix(in srgb, white, transparent 90%);
+  color: color-mix(in srgb, white, transparent 10%);
+  font-size: calc(var(--dock-btn-size) * 0.33);
   font-weight: 600;
   cursor: pointer;
   display: flex;
@@ -307,10 +401,10 @@ body,
   transition: background 0.25s, transform 0.15s;
 }
 .side-dock-btn:hover {
-  background: rgba(255, 255, 255, 0.25);
+  background: color-mix(in srgb, white, transparent 75%);
 }
 .side-dock-btn.active {
-  background: rgba(255, 255, 255, 0.95);
+  background: color-mix(in srgb, white, transparent 5%);
   color: #0a0a0a;
 }
 
@@ -326,29 +420,29 @@ body,
   align-items: center;
   gap: 10px;
   padding: 10px 16px;
-  background: rgba(0, 0, 0, 0.35);
+  background: var(--indicator-bg);
   backdrop-filter: blur(12px);
   -webkit-backdrop-filter: blur(12px);
   border-radius: 999px;
   z-index: 30;
-  border: 1px solid rgba(255, 255, 255, 0.08);
+  border: 1px solid var(--indicator-border);
 }
 
 .dot {
   width: 9px;
   height: 9px;
   border-radius: 50%;
-  background: rgba(255, 255, 255, 0.5);
+  background: var(--dot-color);
   border: none;
   cursor: pointer;
   padding: 0;
   transition: all 0.25s ease;
 }
 .dot:hover {
-  background: rgba(255, 255, 255, 0.85);
+  background: var(--dot-color-hover);
 }
 .dot.active {
-  background: #ffffff;
+  background: var(--dot-color-active);
   width: 24px;
   border-radius: 5px;
 }
@@ -359,5 +453,26 @@ body,
   .app-grid {
     transition: none !important;
     animation: none !important;
+  }
+}
+
+/* ==================================================
+   FALLBACK for browsers without color-mix()
+   (Android WebView < 122). Substitutes solid colors.
+   ================================================== */
+@supports not (color: color-mix(in srgb, red, blue)) {
+  :root {
+    --rect-upper-bg: rgba(30, 30, 30, 0.55);
+    --rect-lower-bg: rgba(30, 30, 30, 0.30);
+    --side-tab-bg: rgba(200, 180, 130, 0.35);
+    --side-tab-border: rgba(255, 255, 255, 0.12);
+    --page-label-color: rgba(0, 0, 0, 0.45);
+    --app-icon-color: #333;
+    --indicator-bg: rgba(0, 0, 0, 0.35);
+    --indicator-border: rgba(255, 255, 255, 0.08);
+    --dot-color: rgba(255, 255, 255, 0.5);
+    --dot-color-hover: rgba(255, 255, 255, 0.85);
+    --date-color: #f4e7b0;
+    --date-shadow: rgba(30, 30, 30, 0.55);
   }
 }

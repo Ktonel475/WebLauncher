@@ -10,10 +10,13 @@ const GRID = [
       { id: 'rect-3', topVh: 155, heightVh: 100, variant: 'upper' },
       { id: 'rect-4', topVh: 160, heightVh: 100, variant: 'lower' },
     ],
+    dates: [
+      { id: 'date-1', topVh: 90, align: 'left' },
+    ],
     pages: [
-      { id: '1a', label: 'Page 1a', color: '#f4e7b0' },
-      { id: '1b', label: 'Page 1b', color: '#f4e7b0' },
-      { id: '1c', label: 'Page 1c', color: '#f4e7b0' },
+      { id: '1a', label: 'Page 1a', color: 'var(--theme)' },
+      { id: '1b', label: 'Page 1b', color: 'var(--theme)' },
+      { id: '1c', label: 'Page 1c', color: 'var(--theme)' },
     ],
   },
   {
@@ -33,9 +36,97 @@ const VELOCITY_THRESHOLD = 0.5
 const ANIM_MS = 350
 const AXIS_LOCK_PX = 8
 
+// --------------------------------------------------
+// Slope percentages — MUST match the clip-path used in CSS
+// for .column-rect-upper / .column-rect-lower
+// top-left   = (0, 40%)
+// top-right  = (100%, 0%)
+// So: drop = 40% of height, run = 100% of width
+// --------------------------------------------------
+const SLOPE_Y = 0.40
+const SLOPE_X = 1.00
+
 // ==================================================
-// COLUMN RECTANGLE — spans two pages with slanted
-// top + bottom edges (parallelogram), flush to sides
+// DATE HOOK
+// ==================================================
+function useDateInfo() {
+  const [now, setNow] = useState(new Date())
+
+  useEffect(() => {
+    const id = setInterval(() => setNow(new Date()), 60_000)
+    return () => clearInterval(id)
+  }, [])
+
+  const dayName = now.toLocaleDateString('en-US', { weekday: 'long' })
+  const dateStr = now.toLocaleDateString('ja-JP', {
+    year: 'numeric',
+    month: 'long',
+    day: 'numeric',
+  })
+
+  return { dayName, dateStr }
+}
+
+// ==================================================
+// SLOPE ANGLE HOOK — computes the rotation (deg) that
+// matches a clip-path with the given slope percentages.
+//
+//   ratio = (SLOPE_Y * elementHeight) / (SLOPE_X * elementWidth)
+//   angle = -atan(ratio) * (180 / PI)
+//
+// Negative because the top edge rises to the right.
+// ==================================================
+function useSlopeAngle({ heightVh = 100 } = {}) {
+  const [angle, setAngle] = useState(-28)
+
+  useEffect(() => {
+    const compute = () => {
+      const W = window.innerWidth
+      const H = (heightVh / 100) * window.innerHeight
+
+      const dy = SLOPE_Y * H
+      const dx = SLOPE_X * W
+
+      // Guard against degenerate sizes
+      if (dx === 0 || dy === 0) return
+
+      const deg = -Math.atan(dy / dx) * (180 / Math.PI)
+      setAngle(deg)
+    }
+
+    compute()
+    window.addEventListener('resize', compute)
+    return () => window.removeEventListener('resize', compute)
+  }, [heightVh])
+
+  return angle
+}
+
+// ==================================================
+// DATE LABEL — standalone element, rotated to match
+// the slope of the rectangles.
+// ==================================================
+function DateLabel({ topVh = 0, align = 'left', referenceHeightVh = 100 }) {
+  const { dayName, dateStr } = useDateInfo()
+  const angle = useSlopeAngle({ heightVh: referenceHeightVh })
+
+  return (
+    <div
+      className={`date-label date-label-${align}`}
+      style={{
+        top: `${topVh}vh`,
+        transform: `rotate(${angle}deg)`,
+      }}
+      aria-hidden="true"
+    >
+      <div className="date-label-day">{dayName}</div>
+      <div className="date-label-date">{dateStr}</div>
+    </div>
+  )
+}
+
+// ==================================================
+// COLUMN RECTANGLE — pure shape, no text
 // ==================================================
 function ColumnRectangle({ topVh = 0, heightVh = 200, variant = 'upper' }) {
   return (
@@ -387,17 +478,7 @@ function App() {
                   position: 'relative',
                 }}
               >
-                {/* Rectangle overlays — each spans two pages */}
-                {col.rectangles &&
-                  col.rectangles.map((rect) => (
-                    <ColumnRectangle
-                      key={rect.id}
-                      topVh={rect.topVh}
-                      heightVh={rect.heightVh}
-                      variant={rect.variant}
-                    />
-                  ))}
-
+                {/* Pages (background layer) */}
                 {col.pages.map((pageMeta, rowIndex) => (
                   <div
                     key={pageMeta.id}
@@ -435,6 +516,28 @@ function App() {
                     </div>
                   </div>
                 ))}
+
+                {/* Rectangle overlays */}
+                {col.rectangles &&
+                  col.rectangles.map((rect) => (
+                    <ColumnRectangle
+                      key={rect.id}
+                      topVh={rect.topVh}
+                      heightVh={rect.heightVh}
+                      variant={rect.variant}
+                    />
+                  ))}
+
+                {/* Date labels on top — rotated to match slope */}
+                {col.dates &&
+                  col.dates.map((d) => (
+                    <DateLabel
+                      key={d.id}
+                      topVh={d.topVh}
+                      align={d.align}
+                      referenceHeightVh={100}
+                    />
+                  ))}
               </div>
             )
           })}
