@@ -1,47 +1,29 @@
 /* ==================================================
    GLOBAL TOKENS
-   All colors are derived from --theme.
-   Change --theme and the whole launcher re-skins.
    ================================================== */
 :root {
-  /* ---- THE MAIN COLOR ---- */
   --theme: #5267e3;
 
-  /* ---- DERIVED: page ---- */
   --page-bg: var(--theme);
 
-  /* ---- DERIVED: rectangle fills (dark tint over the page) ---- */
-  /* Upper = darker (55%) — bright enough for date text to pop */
   --rect-upper-bg: color-mix(in srgb, var(--theme), black 65%);
-
-  /* Lower = lighter (30%) — dimmer secondary band */
   --rect-lower-bg: color-mix(in srgb, var(--theme), black 75%);
 
-  /* ---- DERIVED: side tab ---- */
   --side-tab-bg: color-mix(in srgb, var(--theme), black 10%);
   --side-tab-border: color-mix(in srgb, white, transparent 88%);
 
-  /* ---- DERIVED: page label ---- */
   --page-label-color: color-mix(in srgb, black, transparent 55%);
-
-  /* ---- DERIVED: app icon text ---- */
   --app-icon-color: color-mix(in srgb, var(--theme), black 80%);
 
-  /* ---- DERIVED: bottom indicator ---- */
   --indicator-bg: color-mix(in srgb, black, transparent 65%);
   --indicator-border: color-mix(in srgb, white, transparent 92%);
   --dot-color: color-mix(in srgb, white, transparent 50%);
   --dot-color-hover: color-mix(in srgb, white, transparent 15%);
   --dot-color-active: #ffffff;
 
-  /* ---- DERIVED: date label ---- */
   --date-color: color-mix(in srgb, var(--theme), black 10%);
   --date-shadow: color-mix(in srgb, black, transparent 45%);
 
-  /* ==================================================
-     FLUID TYPOGRAPHY (Option 1: clamp)
-     Format: clamp(min, preferred-vw, max)
-     ================================================== */
   --date-day-size:  clamp(28px, 12vw, 96px);
   --date-date-size: clamp(14px, 4vw, 32px);
 
@@ -52,13 +34,10 @@
   --avatar-size:    clamp(40px, 10vw, 56px);
   --dock-btn-size:  clamp(40px, 11vw, 56px);
 
-  /* Side tab width scales a bit with viewport too */
   --side-tab-width: clamp(60px, 16vw, 84px);
 
-  /* Page label */
   --page-label-size: clamp(12px, 2.6vw, 16px);
 
-  /* App icon */
   --app-icon-size:      clamp(44px, 12vw, 64px);
   --app-icon-font-size: clamp(11px, 2.4vw, 14px);
 }
@@ -124,6 +103,34 @@ body,
 }
 
 /* ==================================================
+   COLUMN WALLPAPER — persistent layers
+   Both layers always exist. The reveal layer is
+   hidden via a zero-area clip-path when idle.
+   ================================================== */
+.column-wallpaper {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  background-size: cover;
+  background-position: center;
+  background-repeat: no-repeat;
+  pointer-events: none;
+  backface-visibility: hidden;
+  will-change: transform, clip-path;
+  transform: translate3d(0, 0, 0);
+}
+
+.column-wallpaper-base {
+  z-index: 0;
+}
+
+.column-wallpaper-reveal {
+  z-index: 1;
+}
+
+/* ==================================================
    PAGE
    ================================================== */
 .page {
@@ -138,6 +145,7 @@ body,
   left: 0;
   overflow: hidden;
   z-index: 2;
+  will-change: transform;
 }
 
 .page-label {
@@ -166,14 +174,8 @@ body,
 }
 
 @keyframes fadeIn {
-  from {
-    opacity: 0;
-    transform: translateY(8px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
+  from { opacity: 0; transform: translateY(8px); }
+  to   { opacity: 1; transform: translateY(0); }
 }
 
 .app-icon {
@@ -227,28 +229,18 @@ body,
   position: absolute;
   inset: 0;
   background: var(--rect-upper-bg);
-  clip-path: polygon(
-    0 40%,
-    100% 0,
-    100% 60%,
-    0 100%
-  );
+  clip-path: polygon(0 40%, 100% 0, 100% 60%, 0 100%);
 }
 
 .column-rect-lower .column-rect-bg {
   position: absolute;
   inset: 0;
   background: var(--rect-lower-bg);
-  clip-path: polygon(
-    0 40%,
-    100% 0,
-    100% 60%,
-    0 100%
-  );
+  clip-path: polygon(0 40%, 100% 0, 100% 60%, 0 100%);
 }
 
 /* ==================================================
-   DATE LABEL — standalone, rotated to match slope
+   DATE LABEL
    ================================================== */
 .date-label {
   position: absolute;
@@ -458,7 +450,6 @@ body,
 
 /* ==================================================
    FALLBACK for browsers without color-mix()
-   (Android WebView < 122). Substitutes solid colors.
    ================================================== */
 @supports not (color: color-mix(in srgb, red, blue)) {
   :root {
