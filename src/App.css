@@ -4,6 +4,8 @@
 :root {
   --theme: #5267e3;
 
+  /* Kept for anything that still wants it (rects, etc.) but no longer
+     used as the launcher/page background. */
   --page-bg: var(--theme);
 
   --rect-upper-bg: color-mix(in srgb, var(--theme), black 65%);
@@ -51,6 +53,8 @@
   box-sizing: border-box;
 }
 
+/* Make every ancestor of the launcher transparent so the native
+   desktop / system background can show through behind pages 2 & 3. */
 html,
 body,
 #root {
@@ -63,7 +67,7 @@ body,
   user-select: none;
   -webkit-user-select: none;
   -webkit-tap-highlight-color: transparent;
-  background: #000;
+  background: transparent;
 }
 
 /* ==================================================
@@ -74,6 +78,7 @@ body,
   width: 100vw;
   height: 100vh;
   overflow: hidden;
+  background: transparent; /* was var(--page-bg) */
 }
 
 /* ==================================================
@@ -85,6 +90,7 @@ body,
   overflow: hidden;
   position: relative;
   touch-action: none;
+  background: transparent;
 }
 
 .track {
@@ -93,6 +99,7 @@ body,
   transform: translate3d(0, 0, 0);
   will-change: transform;
   backface-visibility: hidden;
+  background: transparent;
 }
 
 .column {
@@ -100,6 +107,7 @@ body,
   width: 100vw;
   position: relative;
   overflow: visible;
+  background: transparent;
 }
 
 /* ==================================================
@@ -146,6 +154,7 @@ body,
   overflow: hidden;
   z-index: 2;
   will-change: transform;
+  background: transparent;
 }
 
 .page-label {

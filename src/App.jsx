@@ -587,25 +587,32 @@ function App() {
                   position: 'relative',
                 }}
               >
-                {/* Base wallpaper — always mounted */}
-                <div
-                  ref={(el) => (wallpaperBaseRefs.current[colIndex] = el)}
-                  className="column-wallpaper column-wallpaper-base"
-                  style={{ backgroundImage: baseWallpaper || 'none' }}
-                  aria-hidden="true"
-                />
+                {/* Base wallpaper — only rendered if this column has one.
+                    Columns without a wallpaper stay fully transparent. */}
+                {baseWallpaper && (
+                  <div
+                    ref={(el) => (wallpaperBaseRefs.current[colIndex] = el)}
+                    className="column-wallpaper column-wallpaper-base"
+                    style={{ backgroundImage: baseWallpaper }}
+                    aria-hidden="true"
+                  />
+                )}
 
-                {/* Reveal wallpaper — always mounted; hidden via clip-path */}
-                <div
-                  ref={(el) => (wallpaperRevealRefs.current[colIndex] = el)}
-                  className="column-wallpaper column-wallpaper-reveal"
-                  style={{
-                    backgroundImage: revealWallpaper || 'none',
-                    clipPath: revealClip,
-                    WebkitClipPath: revealClip,
-                  }}
-                  aria-hidden="true"
-                />
+                {/* Reveal wallpaper — only rendered if we have one to show.
+                    Kept mounted with a hidden clip-path when idle so the
+                    diagonal reveal can animate without a remount flash. */}
+                {revealWallpaper && (
+                  <div
+                    ref={(el) => (wallpaperRevealRefs.current[colIndex] = el)}
+                    className="column-wallpaper column-wallpaper-reveal"
+                    style={{
+                      backgroundImage: revealWallpaper,
+                      clipPath: revealClip,
+                      WebkitClipPath: revealClip,
+                    }}
+                    aria-hidden="true"
+                  />
+                )}
 
                 {/* Pages — transparent content */}
                 {col.pages.map((pageMeta, rowIndex) => (
